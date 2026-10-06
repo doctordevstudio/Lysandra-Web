@@ -3,7 +3,6 @@ uvicorn[standard]
 gunicorn
 httpx
 pydantic
-python-jose[cryptography]
 python-multipart
 python-dotenv
 bleach
