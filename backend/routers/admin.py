@@ -1,8 +1,10 @@
 """
-Admin API. All routes except /login require Bearer JWT.
+Admin API. All routes except /login require Bearer <session_token>.
+Tokens are random strings stored in Firebase at:
+    admin/sessions/{token} = { username, created_at, ip, fingerprint }
+
 Rate limiting: 3 failed logins -> device block for 60 min.
-Device fingerprint = sha256(ip + UA + Accept-Language + platform).
-Password: plaintext comparison (no hashing) — env var ADMIN_PASSWORD.
+Password: plaintext comparison (env var ADMIN_PASSWORD).
 """
 from __future__ import annotations
 
@@ -19,8 +21,7 @@ from models.schemas import (
 from services.firebase import db
 from services.ratelimit import admin_limiter
 from services.security import (
-    client_ip, create_admin_token, decode_admin_token,
-    device_fingerprint, verify_password,
+    client_ip, device_fingerprint, generate_session_token, verify_password,
 )
 from services.sanitize import clean_html
 
@@ -47,10 +48,11 @@ async def require_admin(
 ):
     if not creds:
         raise HTTPException(401, "Missing token")
-    payload = decode_admin_token(creds.credentials)
-    if not payload or payload.get("role") != "admin":
+    token = creds.credentials
+    session = await db.get(f"admin/sessions/{token}")
+    if not session or not isinstance(session, dict):
         raise HTTPException(401, "Invalid token")
-    return payload
+    return {"sub": session.get("username", "admin"), "token": token}
 
 
 # ---------------- login ----------------
@@ -94,9 +96,7 @@ async def login(body: AdminLogin, request: Request):
             await db.set(
                 f"admin/blocks/{fp}",
                 {
-                    "until": int(
-                        time.time() + settings.ADMIN_BLOCK_MIN * 60
-                    ),
+                    "until": int(time.time() + settings.ADMIN_BLOCK_MIN * 60),
                     "ip": ip,
                 },
             )
@@ -109,20 +109,33 @@ async def login(body: AdminLogin, request: Request):
         await db.set(fails_path, cur)
         raise HTTPException(401, "Invalid credentials")
 
-    # success — clear fails
+    # success — clear fails, create session token
     await db.delete(f"admin/fails/{fp}")
-    token = create_admin_token(body.username)
-    # expires_in: 0 means never expires
-    return {
-        "token": token,
-        "expires_in": settings.JWT_TTL_MIN * 60 if settings.JWT_TTL_MIN > 0 else 0,
-    }
+    token = generate_session_token()
+    await db.set(
+        f"admin/sessions/{token}",
+        {
+            "username": body.username,
+            "created_at": int(time.time()),
+            "ip": ip,
+            "fingerprint": fp,
+        },
+    )
+    return {"token": token, "expires_in": 0}  # 0 = never expires
 
 
 # ---------------- whoami ----------------
 @router.get("/me")
 async def me(admin=Depends(require_admin)):
     return {"username": admin["sub"]}
+
+
+# ---------------- logout ----------------
+@router.post("/logout")
+async def logout(admin=Depends(require_admin)):
+    """Deletes the current session token from Firebase."""
+    await db.delete(f"admin/sessions/{admin['token']}")
+    return {"ok": True}
 
 
 # ---------------- dashboard stats ----------------
@@ -174,10 +187,7 @@ async def stats(admin=Depends(require_admin), days: int = 30):
 
 
 @router.get("/stats/range")
-async def stats_range(
-    start: str, end: str,
-    admin=Depends(require_admin),
-):
+async def stats_range(start: str, end: str, admin=Depends(require_admin)):
     try:
         d0 = datetime.strptime(start, "%Y-%m-%d").date()
         d1 = datetime.strptime(end, "%Y-%m-%d").date()
@@ -368,6 +378,32 @@ async def audit_logs(admin=Depends(require_admin), limit: int = 200):
     return {"results": items[:limit]}
 
 
+# ---------------- sessions management ----------------
+@router.get("/sessions")
+async def list_sessions(admin=Depends(require_admin)):
+    """List all active admin sessions."""
+    raw = await db.get("admin/sessions") or {}
+    items = []
+    for token, info in raw.items():
+        if isinstance(info, dict):
+            items.append({
+                "token_preview": token[:12] + "…",
+                "username": info.get("username"),
+                "created_at": info.get("created_at"),
+                "ip": info.get("ip"),
+            })
+    items.sort(key=lambda x: x.get("created_at", 0), reverse=True)
+    return {"results": items}
+
+
+@router.post("/sessions/revoke-all")
+async def revoke_all_sessions(admin=Depends(require_admin)):
+    """Logs out everywhere — useful if a token leaked."""
+    await db.delete("admin/sessions")
+    await audit(admin["sub"], "sessions.revoke_all", {})
+    return {"ok": True}
+
+
 # ---------------- maintenance ----------------
 @router.post("/trim/visits")
 async def trim_visits(keep_days: int = 7, admin=Depends(require_admin)):
@@ -385,10 +421,6 @@ async def trim_visits(keep_days: int = 7, admin=Depends(require_admin)):
 # ---------------- one-time seed ----------------
 @router.post("/seed")
 async def seed_endpoint(request: Request):
-    """
-    One-time seed. Requires ADMIN_USERNAME + ADMIN_PASSWORD in body.
-    Delete or comment out this route after first use.
-    """
     body = await request.json()
     if body.get("username") != settings.ADMIN_USERNAME:
         raise HTTPException(401, "Bad creds")
