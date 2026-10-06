@@ -2,13 +2,14 @@
 Admin API. All routes except /login require Bearer JWT.
 Rate limiting: 3 failed logins -> device block for 60 min.
 Device fingerprint = sha256(ip + UA + Accept-Language + platform).
+Password: plaintext comparison (no hashing) — env var ADMIN_PASSWORD.
 """
 from __future__ import annotations
 
 import time
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from config import settings
@@ -29,7 +30,6 @@ bearer = HTTPBearer(auto_error=False)
 
 # ---------------- helpers ----------------
 async def audit(actor: str, action: str, meta: dict | None = None) -> None:
-    """Append-only audit trail of admin writes."""
     await db.push(
         "admin/audit_log",
         {
@@ -71,9 +71,7 @@ async def login(body: AdminLogin, request: Request):
         raise HTTPException(429, f"Too many attempts. Retry in {retry}s.")
 
     valid_user = body.username == settings.ADMIN_USERNAME
-    valid_pass = bool(settings.ADMIN_PASSWORD_HASH) and verify_password(
-        body.password, settings.ADMIN_PASSWORD_HASH
-    )
+    valid_pass = verify_password(body.password, settings.ADMIN_PASSWORD)
 
     # log every attempt
     await db.push(
@@ -89,7 +87,6 @@ async def login(body: AdminLogin, request: Request):
     )
 
     if not (valid_user and valid_pass):
-        # count consecutive fails for this device
         fails_path = f"admin/fails/{fp}"
         cur = await db.get(fails_path) or 0
         cur = int(cur) + 1
@@ -115,7 +112,11 @@ async def login(body: AdminLogin, request: Request):
     # success — clear fails
     await db.delete(f"admin/fails/{fp}")
     token = create_admin_token(body.username)
-    return {"token": token, "expires_in": settings.JWT_TTL_MIN * 60}
+    # expires_in: 0 means never expires
+    return {
+        "token": token,
+        "expires_in": settings.JWT_TTL_MIN * 60 if settings.JWT_TTL_MIN > 0 else 0,
+    }
 
 
 # ---------------- whoami ----------------
@@ -127,14 +128,9 @@ async def me(admin=Depends(require_admin)):
 # ---------------- dashboard stats ----------------
 @router.get("/stats")
 async def stats(admin=Depends(require_admin), days: int = 30):
-    """
-    Returns counts for today / yesterday / all-time and a
-    daily series for the last `days` days.
-    """
     today = datetime.now(timezone.utc).date()
     yesterday = today - timedelta(days=1)
 
-    # users: unique session_ids seen in analytics/watch
     watch = await db.get("analytics/watch") or {}
     clicks_carousel = await db.get("analytics/clicks/carousel") or {}
     clicks_dialog = await db.get("analytics/clicks/dialog") or {}
@@ -148,7 +144,6 @@ async def stats(admin=Depends(require_admin), days: int = 30):
     for day_key in watch.keys():
         all_sessions.update((watch[day_key] or {}).keys())
 
-    # watch counts per day
     def watch_count(day_key: str) -> int:
         day = watch.get(day_key) or {}
         return sum(len(movies or {}) for movies in day.values())
@@ -157,7 +152,6 @@ async def stats(admin=Depends(require_admin), days: int = 30):
     yest_watch = watch_count(yesterday.strftime("%Y-%m-%d"))
     all_watch = sum(watch_count(d) for d in watch.keys())
 
-    # carousel clicks total
     def sum_clicks(store: dict) -> int:
         return sum(len(s) for s in store.values() if isinstance(s, dict))
 
@@ -184,7 +178,6 @@ async def stats_range(
     start: str, end: str,
     admin=Depends(require_admin),
 ):
-    """Custom range: start/end as YYYY-MM-DD (inclusive)."""
     try:
         d0 = datetime.strptime(start, "%Y-%m-%d").date()
         d1 = datetime.strptime(end, "%Y-%m-%d").date()
@@ -361,9 +354,6 @@ async def login_logs(admin=Depends(require_admin), limit: int = 200):
 
 @router.get("/logs/visits")
 async def visit_logs(admin=Depends(require_admin), limit: int = 500):
-    """
-    User-facing visit log populated by analytics.pageview.
-    """
     raw = await db.get("admin/visits") or {}
     items = list(raw.values()) if isinstance(raw, dict) else []
     items.sort(key=lambda x: x.get("ts", 0), reverse=True)
@@ -381,10 +371,6 @@ async def audit_logs(admin=Depends(require_admin), limit: int = 200):
 # ---------------- maintenance ----------------
 @router.post("/trim/visits")
 async def trim_visits(keep_days: int = 7, admin=Depends(require_admin)):
-    """
-    Deletes admin/visits entries older than keep_days.
-    Returns how many were removed.
-    """
     cutoff = int(time.time()) - keep_days * 86400
     raw = await db.get("admin/visits") or {}
     removed = 0
@@ -396,17 +382,17 @@ async def trim_visits(keep_days: int = 7, admin=Depends(require_admin)):
     return {"removed": removed}
 
 
-# ---------------- one-time seed (delete after use) ----------------
+# ---------------- one-time seed ----------------
 @router.post("/seed")
 async def seed_endpoint(request: Request):
     """
-    One-time seed. Requires the admin password in the body.
+    One-time seed. Requires ADMIN_USERNAME + ADMIN_PASSWORD in body.
     Delete or comment out this route after first use.
     """
     body = await request.json()
     if body.get("username") != settings.ADMIN_USERNAME:
         raise HTTPException(401, "Bad creds")
-    if not verify_password(body.get("password", ""), settings.ADMIN_PASSWORD_HASH):
+    if not verify_password(body.get("password", ""), settings.ADMIN_PASSWORD):
         raise HTTPException(401, "Bad creds")
 
     default_carousel = [
@@ -458,18 +444,15 @@ async def seed_endpoint(request: Request):
         },
     }
 
-    existing = await db.get("carousel")
-    if not existing:
+    if not (await db.get("carousel")):
         for item in default_carousel:
             await db.push("carousel", item)
 
-    existing = await db.get("dialogs")
-    if not existing:
+    if not (await db.get("dialogs")):
         for d in default_dialogs:
             await db.push("dialogs", d)
 
-    existing = await db.get("pages")
-    if not existing:
+    if not (await db.get("pages")):
         for slug, page in default_pages.items():
             await db.set(f"pages/{slug}", page)
 
