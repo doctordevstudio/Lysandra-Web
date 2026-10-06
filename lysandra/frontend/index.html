@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#060913" />
+  <meta name="description" content="Lysandra — Stream movies and series in HD." />
+  <title>Lysandra</title>
+  <link rel="icon" href="assets/icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+  <!-- ========== SPLASH ========== -->
+  <div id="splash">
+    <img class="splash-logo" src="assets/icon.png" alt="Lysandra" />
+    <div class="splash-name">LYSANDRA</div>
+    <div class="splash-tagline">Stream · Explore · Enjoy</div>
+    <div class="splash-builder">Build by Dr. Dev || Dr. Hamza</div>
+  </div>
+
+  <!-- ========== TOP BAR ========== -->
+  <header id="topbar">
+    <button class="icon-btn" id="btnMenu" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="brand">LYSANDRA</div>
+    <div class="spacer"></div>
+    <div id="searchWrap">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="searchInput" type="search" placeholder="Search movies, series…" autocomplete="off" />
+    </div>
+  </header>
+
+  <!-- ========== DRAWER ========== -->
+  <div id="drawerBackdrop"></div>
+  <aside id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <img src="assets/icon.png" alt="Lysandra" />
+      <div>
+        <div class="title">Lysandra</div>
+        <div class="sub">PREMIUM STREAMING</div>
+      </div>
+    </div>
+    <nav class="drawer-nav" id="drawerNav"><!-- filled by drawer.js --></nav>
+    <div class="drawer-foot" id="drawerFoot"></div>
+  </aside>
+
+  <!-- ========== MAIN ========== -->
+  <main>
+    <section id="carouselSection">
+      <div class="carousel-track" id="carouselTrack"></div>
+    </section>
+
+    <section>
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-kind="bollywood">Bollywood</button>
+        <button class="tab" data-kind="hollywood">Hollywood</button>
+        <button class="tab" data-kind="serials">Series</button>
+      </div>
+      <div class="section-title" id="sectionTitle">Bollywood</div>
+      <div class="grid" id="grid"></div>
+      <div class="loader hidden" id="loader"></div>
+      <div id="sentinel" style="height:1px;"></div>
+    </section>
+
+    <footer>
+      <div class="brand-line">Build by Dr. Dev || Dr. Hamza</div>
+      <div id="footerCopy"></div>
+    </footer>
+  </main>
+
+  <!-- ========== MODALS ========== -->
+  <div id="modalBackdrop"></div>
+
+  <div id="detailModal" role="dialog" aria-modal="true">
+    <div class="detail-hero">
+      <img id="dmPoster" alt="" />
+      <button class="detail-close" id="dmClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="detail-body">
+      <div class="detail-title" id="dmTitle"></div>
+      <div class="detail-meta" id="dmMeta"></div>
+      <div class="detail-desc" id="dmDesc"></div>
+      <button class="play-btn" id="dmPlay">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        Play Now
+      </button>
+    </div>
+  </div>
+
+  <div id="formatDialog" role="dialog" aria-modal="true">
+    <div class="dialog-head">
+      <div class="title">Select Player</div>
+      <button class="icon-btn" id="fmClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="dialog-body" id="fmList"></div>
+  </div>
+
+  <div id="playerModal" aria-hidden="true">
+    <button class="player-close" id="pmClose" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <div id="pmHost" style="width:100%;height:100%;"></div>
+  </div>
+
+  <div id="pageView" aria-hidden="true">
+    <div class="page-content" id="pageContent"></div>
+  </div>
+
+  <div id="dialogLayer"></div>
+  <div id="toast"></div>
+
+  <!-- ========== SCRIPTS ========== -->
+  <script src="config.js"></script>
+  <script src="js/session.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/drawer.js"></script>
+  <script src="js/splash.js"></script>
+  <script src="js/carousel.js"></script>
+  <script src="js/tabs.js"></script>
+  <script src="js/movie.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/pages.js"></script>
+  <script src="js/dialogs.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
