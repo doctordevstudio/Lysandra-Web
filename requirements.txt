@@ -4,7 +4,6 @@ gunicorn
 httpx
 pydantic
 python-jose[cryptography]
-passlib[bcrypt]
 python-multipart
 python-dotenv
 bleach
