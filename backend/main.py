@@ -106,30 +106,44 @@ app.include_router(admin.router)
 FE = settings.frontend_path
 if FE.exists():
     # /admin → admin.html
-    @app.get("/admin", include_in_schema=False)
-    @app.get("/admin/", include_in_schema=False)
-    async def _admin_index():
-        return FileResponse(FE / "admin.html")
+@app.get("/admin", include_in_schema=False)
+@app.get("/admin/", include_in_schema=False)
+async def _admin_index():
+    return FileResponse(FE / "admin.html")
 
-    # Static dirs
-    for sub in ("css", "js", "assets"):
-        p = FE / sub
-        if p.exists():
-            app.mount(f"/{sub}", StaticFiles(directory=str(p)), name=sub)
+# Service worker — MUST be at root with correct MIME type
+@app.get("/sw.js", include_in_schema=False)
+async def _service_worker():
+    sw_path = FE / "sw.js"
+    if sw_path.is_file():
+        return FileResponse(
+            sw_path,
+            media_type="application/javascript",
+            headers={
+                "Service-Worker-Allowed": "/",
+                "Cache-Control": "public, max-age=3600",
+            },
+        )
+    return JSONResponse({"detail": "sw.js not found"}, status_code=404)
 
-    # Root + SPA fallback
-    @app.get("/", include_in_schema=False)
-    async def _index():
-        return FileResponse(FE / "index.html")
+# Static dirs
+for sub in ("css", "js", "assets"):
+    p = FE / sub
+    if p.exists():
+        app.mount(f"/{sub}", StaticFiles(directory=str(p)), name=sub)
 
-    @app.get("/{path:path}", include_in_schema=False)
-    async def _spa_fallback(path: str):
-        # Don't hijack API paths
-        if path.startswith("api/") or path.startswith("docs") or path.startswith("openapi"):
-            return JSONResponse({"detail": "Not Found"}, status_code=404)
-        candidate = FE / path
-        if candidate.is_file():
-            return FileResponse(candidate)
-        return FileResponse(FE / "index.html")
+# Root + SPA fallback
+@app.get("/", include_in_schema=False)
+async def _index():
+    return FileResponse(FE / "index.html")
+
+@app.get("/{path:path}", include_in_schema=False)
+async def _spa_fallback(path: str):
+    if path.startswith("api/") or path.startswith("docs") or path.startswith("openapi"):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    candidate = FE / path
+    if candidate.is_file():
+        return FileResponse(candidate)
+    return FileResponse(FE / "index.html")
 else:
     log.warning("Frontend dir not found at %s — API only", FE)
