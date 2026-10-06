@@ -1,7 +1,7 @@
 /**
  * LYSANDRA ADMIN — single-file SPA
  * Sections:
- *   1. Auth + API client (JWT in memory + sessionStorage)
+ *   1. Auth + API client
  *   2. Router (hash-based)
  *   3. Views: Dashboard, Carousel, Dialogs, Pages, Logs, Settings
  *   4. Modal + helpers
@@ -60,6 +60,7 @@
     login: (username, password) =>
       api("/api/admin/login", { method: "POST", body: JSON.stringify({ username, password }) }),
     me: () => api("/api/admin/me"),
+    logout: () => api("/api/admin/logout", { method: "POST" }),
     stats: () => api("/api/admin/stats"),
     statsRange: (start, end) => api(`/api/admin/stats/range?start=${start}&end=${end}`),
 
@@ -187,7 +188,6 @@
     } catch (e) {
       host.innerHTML = `<div class="acard"><h2>Error</h2><p>${esc(e.message)}</p></div>`;
     }
-    // close mobile sidebar
     $("#adminApp").classList.remove("side-open");
   }
 
@@ -197,8 +197,7 @@
   // 5. VIEW: DASHBOARD
   // ================================================================
   async function viewDashboard(host) {
-    const [stats, statsYest] = await Promise.all([API.stats(), Promise.resolve(null)]);
-    const y = stats.users.yesterday;
+    const stats = await API.stats();
     const oldActive = stats.users.all_time - stats.users.today;
 
     host.innerHTML = `
@@ -634,7 +633,7 @@
                   <td>${esc(r.path || "")}</td>
                   <td class="mono">${esc((r.session_id || "").slice(0, 12))}…</td>
                 </tr>`).join("")}</tbody>
-            </table>` : `<p style="color:var(--text-dim)">No user visits logged yet. (Wire /api/analytics/pageview to push into admin/visits if you want this filled.)</p>`;
+            </table>` : `<p style="color:var(--text-dim)">No user visits logged yet.</p>`;
         }
       } catch (e) {
         box.innerHTML = `<p style="color:#FFB3D9">${esc(e.message)}</p>`;
@@ -677,7 +676,7 @@
       <div class="acard">
         <h2><span class="dot"></span>Security</h2>
         <p style="color:var(--text-dim);font-size:13px;margin:0 0 12px;">
-          Rate limits, admin block rules, and JWT secret are configured via Render environment variables.
+          Rate limits and admin block rules are configured via Render environment variables.
         </p>
         <table class="tbl">
           <tbody>
@@ -685,7 +684,6 @@
             <tr><td>PUBLIC_BLOCK_MIN</td><td>Block minutes after exceeding (default 30)</td></tr>
             <tr><td>ADMIN_MAX_FAILS</td><td>Failed logins before block (default 3)</td></tr>
             <tr><td>ADMIN_BLOCK_MIN</td><td>Admin device block minutes (default 60)</td></tr>
-            <tr><td>JWT_SECRET</td><td>HS256 signing secret</td></tr>
           </tbody>
         </table>
       </div>
@@ -702,7 +700,6 @@
   // 11. BOOT / LOGOUT
   // ================================================================
   async function bootApp() {
-    // Validate token
     let me;
     try { me = await API.me(); }
     catch { Auth.clear(); return showLogin(); }
@@ -714,7 +711,12 @@
     await renderRoute();
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      if (Auth.token) await API.logout();
+    } catch (e) {
+      // ignore — user is logging out anyway
+    }
     Auth.clear();
     showLogin();
   }
@@ -726,7 +728,6 @@
       $("#adminApp").classList.toggle("side-open")
     );
 
-    // If we already have a token, try to boot
     if (Auth.token) bootApp();
     else showLogin();
   });
