@@ -14,6 +14,7 @@
 
   async function boot() {
     setFooterCopy();
+    document.querySelectorAll("[data-page]").forEach((b) => b.addEventListener("click", () => window.Pages.open(b.dataset.page)));
     showTopbar();
 
     // Init components
@@ -22,6 +23,8 @@
     window.Player.init();
     window.Search.init();
     window.Pages.init();
+
+    window.Ads.init();
 
     // Load remote bits in parallel
     await Promise.allSettled([

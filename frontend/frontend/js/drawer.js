@@ -26,7 +26,7 @@
     { id: "support", label: "Customer Support", icon: "support", page: "support" },
     { divider: true },
     { id: "dev", label: "About Developer", icon: "dev", page: "about", highlight: true },
-    { id: "tg", label: "Join Telegram", icon: "telegram", external: CFG.TELEGRAM_JOIN },
+    { id: "tg", label: "Join Telegram", icon: "telegram", page: "telegram" },
   ];
 
   function render() {
@@ -62,8 +62,9 @@
       document.getElementById("drawerBackdrop").classList.remove("open");
       document.getElementById("drawer").setAttribute("aria-hidden", "true");
     },
+    setActive(id) { document.querySelectorAll("#drawerNav .item").forEach((e) => e.classList.toggle("current", e.dataset.id === id)); },
     init() {
-      render();
+      render(); Drawer.setActive("home");
       document.getElementById("btnMenu").addEventListener("click", Drawer.open);
       document.getElementById("drawerBackdrop").addEventListener("click", Drawer.close);
     },

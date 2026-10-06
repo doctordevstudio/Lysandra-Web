@@ -60,7 +60,7 @@
 
   function closeFormat() {
     document.getElementById("formatDialog").classList.remove("open");
-    document.getElementById("modalBackdrop").classList.remove("open");
+    if (!document.getElementById("detailModal").classList.contains("open")) document.getElementById("modalBackdrop").classList.remove("open");
   }
 
   // -------- actual player --------
@@ -95,6 +95,7 @@
     pm().classList.add("open");
     pm().setAttribute("aria-hidden", "false");
 
+    window.WatchHistory.add(item);
     // Fire-and-forget analytics
     window.API.trackWatch(
       item.kinopoisk_id,
@@ -130,7 +131,7 @@
         video.addEventListener("playing", () => clearTimeout(watchdog));
 
         video.src = url;
-        video.play().catch(() => fail("native play() rejected"));
+        video.play().catch((e) => { if (e && e.name !== "NotAllowedError") fail("native play() rejected"); });
         return;
       }
 

@@ -34,7 +34,7 @@
       ...opts,
       headers: { ...Auth.headers(), ...(opts.headers || {}) },
     });
-    if (res.status === 401) {
+    if (res.status === 401 && !path.includes("/login")) {
       Auth.clear();
       showLogin();
       throw new Error("Session expired. Please log in again.");
@@ -56,9 +56,19 @@
     return res.json();
   }
 
+  async function fingerprint() {
+    try {
+      const c = document.createElement("canvas"), x = c.getContext("2d");
+      x.font = "14px Arial"; x.fillText("Lysandra", 2, 16);
+      const raw = [navigator.userAgent, navigator.language, navigator.platform, screen.width + "x" + screen.height + "x" + screen.colorDepth, Intl.DateTimeFormat().resolvedOptions().timeZone, navigator.hardwareConcurrency, c.toDataURL()].join("|");
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+      return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+    } catch { return ""; }
+  }
+
   const API = {
-    login: (username, password) =>
-      api("/api/admin/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+    login: async (username, password) =>
+      api("/api/admin/login", { method: "POST", body: JSON.stringify({ username, password, fingerprint: await fingerprint() }) }),
     me: () => api("/api/admin/me"),
     logout: () => api("/api/admin/logout", { method: "POST" }),
     stats: () => api("/api/admin/stats"),
@@ -110,9 +120,11 @@
     open(title, bodyHTML) {
       $("#amTitle").textContent = title;
       $("#amBody").innerHTML = bodyHTML;
+      $("#adminModal").classList.remove("hidden");
       $("#adminModal").classList.add("open");
     },
     close() {
+      $("#adminModal").classList.add("hidden");
       $("#adminModal").classList.remove("open");
     },
     body() { return $("#amBody"); },
@@ -270,38 +282,40 @@
       </div>
     `;
 
-    $$(".row-tabs button", host).forEach((b) => {
-      b.addEventListener("click", async () => {
-        $$(".row-tabs button", host).forEach((x) => x.classList.remove("active"));
-        b.classList.add("active");
-        const r = b.dataset.range;
-        const box = $("#dashRangeBox");
-        if (r === "custom") {
-          box.innerHTML = `
-            <div class="row" style="margin-top:12px">
-              <label class="fld"><span>Start</span><input type="date" id="crStart" /></label>
-              <label class="fld"><span>End</span><input type="date" id="crEnd" /></label>
-              <button class="btn grad" id="crGo">Apply</button>
-            </div>
-            <div id="crResult"></div>
-          `;
-          $("#crGo").addEventListener("click", async () => {
-            const s = $("#crStart").value, e2 = $("#crEnd").value;
-            if (!s || !e2) return toast("Pick both dates");
-            try {
-              const res = await API.statsRange(s, e2);
-              $("#crResult").innerHTML = `
-                <div class="stat-grid" style="margin-top:12px">
-                  <div class="stat"><div class="label">Unique Users</div><div class="value">${res.unique_users}</div></div>
-                  <div class="stat blue"><div class="label">Watch Events</div><div class="value">${res.watch_count}</div></div>
-                </div>`;
-            } catch (ex) { toast(ex.message); }
-          });
-        } else {
-          box.innerHTML = "";
-        }
+    const box = $("#dashRangeBox");
+    const iso = (d) => d.toISOString().slice(0, 10);
+    const show = (u, w, note) => {
+      box.innerHTML = `<div class="stat-grid" style="margin-top:12px">
+        <div class="stat"><div class="label">New Users · ${esc(note)}</div><div class="value">${u}</div></div>
+        <div class="stat blue"><div class="label">Movie Watches · ${esc(note)}</div><div class="value">${w}</div></div></div>`;
+    };
+    async function pick(r) {
+      if (r === "today") return show(stats.users.today, stats.watch.today, "Today");
+      if (r === "yesterday") return show(stats.users.yesterday, stats.watch.yesterday, "Yesterday");
+      if (r === "all") return show(stats.users.all_time, stats.watch.all_time, "All time");
+      if (r === "week") {
+        try { const x = await API.statsRange(iso(new Date(Date.now() - 6 * 864e5)), iso(new Date())); show(x.unique_users, x.watch_count, "Last 7 days"); }
+        catch (ex) { toast(ex.message); }
+        return;
+      }
+      box.innerHTML = `<div class="row" style="margin-top:12px">
+        <label class="fld"><span>Start</span><input type="date" id="crStart" /></label>
+        <label class="fld"><span>End</span><input type="date" id="crEnd" /></label>
+        <button class="btn grad" id="crGo">Apply</button></div><div id="crResult"></div>`;
+      $("#crGo").addEventListener("click", async () => {
+        const s1 = $("#crStart").value, e1 = $("#crEnd").value;
+        if (!s1 || !e1) return toast("Pick both dates");
+        try {
+          const x = await API.statsRange(s1, e1);
+          $("#crResult").innerHTML = `<div class="stat-grid" style="margin-top:12px"><div class="stat"><div class="label">New Users</div><div class="value">${x.unique_users}</div></div><div class="stat blue"><div class="label">Movie Watches</div><div class="value">${x.watch_count}</div></div></div>`;
+        } catch (ex) { toast(ex.message); }
       });
-    });
+    }
+    $$(".row-tabs button", host).forEach((b) => b.addEventListener("click", () => {
+      $$(".row-tabs button", host).forEach((x) => x.classList.remove("active"));
+      b.classList.add("active"); pick(b.dataset.range);
+    }));
+    pick("today");
   }
 
   // ================================================================

@@ -6,17 +6,18 @@
   <meta name="theme-color" content="#060913" />
   <meta name="description" content="Lysandra — Stream movies and series in HD." />
   <title>Lysandra</title>
-  <link rel="icon" href="assets/icon.png" />
+  <link rel="icon" href="assets/icon-96.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/v2.css" />
 </head>
 <body>
 
   <!-- ========== SPLASH ========== -->
   <div id="splash">
-    <img class="splash-logo" src="assets/icon.png" alt="Lysandra" />
+    <img class="splash-logo" src="assets/icon-256.png" alt="Lysandra" />
     <div class="splash-name">LYSANDRA</div>
     <div class="splash-tagline">Stream · Explore · Enjoy</div>
     <div class="splash-builder">Build by Dr. Dev || Dr. Hamza</div>
@@ -39,7 +40,7 @@
   <div id="drawerBackdrop"></div>
   <aside id="drawer" aria-hidden="true">
     <div class="drawer-head">
-      <img src="assets/icon.png" alt="Lysandra" />
+      <img src="assets/icon-256.png" alt="Lysandra" />
       <div>
         <div class="title">Lysandra</div>
         <div class="sub">PREMIUM STREAMING</div>
@@ -53,7 +54,9 @@
   <main>
     <section id="carouselSection">
       <div class="carousel-track" id="carouselTrack"></div>
+      <div class="carousel-dots" id="carouselDots"></div>
     </section>
+    <div class="ad-slot"></div>
 
     <section>
       <div class="tabs" id="tabs">
@@ -67,9 +70,24 @@
       <div id="sentinel" style="height:1px;"></div>
     </section>
 
-    <footer>
-      <div class="brand-line">Build by Dr. Dev || Dr. Hamza</div>
-      <div id="footerCopy"></div>
+    <div class="ad-slot"></div>
+    <footer class="site-footer">
+      <div class="ft-brand">
+        <img src="assets/icon-96.png" alt="" />
+        <div><div class="ft-name">Lysandra</div><div class="ft-tag">Stream · Explore · Enjoy</div></div>
+      </div>
+      <nav class="ft-links">
+        <button data-page="privacy">Privacy Policy</button>
+        <button data-page="terms">Terms &amp; Conditions</button>
+        <button data-page="dmca">DMCA</button>
+        <button data-page="support">Support</button>
+        <button data-page="about">About Developer</button>
+        <button data-page="telegram">Join Telegram</button>
+      </nav>
+      <div class="ft-bar">
+        <div class="ft-credit">Build by Dr. Dev || Dr. Hamza</div>
+        <div id="footerCopy"></div>
+      </div>
     </footer>
   </main>
 
@@ -77,20 +95,22 @@
   <div id="modalBackdrop"></div>
 
   <div id="detailModal" role="dialog" aria-modal="true">
-    <div class="detail-hero">
-      <img id="dmPoster" alt="" />
-      <button class="detail-close" id="dmClose" aria-label="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
-      </button>
-    </div>
-    <div class="detail-body">
-      <div class="detail-title" id="dmTitle"></div>
-      <div class="detail-meta" id="dmMeta"></div>
-      <div class="detail-desc" id="dmDesc"></div>
-      <button class="play-btn" id="dmPlay">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-        Play Now
-      </button>
+    <div class="detail-bg" id="dmBg"></div>
+    <button class="detail-close" id="dmClose" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <div class="detail-grid">
+      <div class="detail-poster"><img id="dmPoster" alt="" /></div>
+      <div class="detail-body">
+        <div class="detail-title" id="dmTitle"></div>
+        <div class="detail-meta" id="dmMeta"></div>
+        <div class="detail-desc" id="dmDesc"></div>
+        <button class="play-btn" id="dmPlay">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Play Now
+        </button>
+        <div class="ad-slot"></div>
+      </div>
     </div>
   </div>
 
@@ -102,6 +122,7 @@
       </button>
     </div>
     <div class="dialog-body" id="fmList"></div>
+    <div class="ad-slot"></div>
   </div>
 
   <div id="playerModal" aria-hidden="true">
@@ -113,6 +134,7 @@
 
   <div id="pageView" aria-hidden="true">
     <div class="page-content" id="pageContent"></div>
+    <div class="ad-slot"></div>
   </div>
 
   <div id="dialogLayer"></div>
@@ -120,8 +142,10 @@
 
   <!-- ========== SCRIPTS ========== -->
   <script src="config.js"></script>
+  <script src="js/util.js"></script>
   <script src="js/session.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/ads.js"></script>
   <script src="js/history.js"></script>
   <script src="js/drawer.js"></script>
   <script src="js/splash.js"></script>

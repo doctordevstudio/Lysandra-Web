@@ -34,6 +34,7 @@
       return req(`/api/catalog/${kind}?${p}`);
     },
     carousel: () => req("/api/carousel"),
+    ads: () => req("/api/ads"),
     dialogs: () => req("/api/dialogs"),
     page: (slug) => req(`/api/pages/${slug}`),
 
