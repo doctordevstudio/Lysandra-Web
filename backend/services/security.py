@@ -1,56 +1,67 @@
 """
 Auth + device fingerprinting utilities.
-- bcrypt password hashing
-- JWT issue/verify for admin sessions
-- deterministic device fingerprint from request headers
+- Plaintext password comparison (no hashing)
+- JWT issue/verify with optional no-expiry mode
+- Deterministic device fingerprint from request headers
 """
 from __future__ import annotations
 
 import hashlib
-import time
+import hmac
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import Request
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from config import settings
 
-pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-
-def hash_password(plain: str) -> str:
-    return pwd_ctx.hash(plain)
-
-
-def verify_password(plain: str, hashed: str) -> bool:
-    try:
-        return pwd_ctx.verify(plain, hashed)
-    except Exception:
+def verify_password(plain: str, expected: str) -> bool:
+    """
+    Constant-time comparison to avoid timing attacks.
+    Both args are plaintext now.
+    """
+    if not expected:
         return False
+    return hmac.compare_digest(plain, expected)
 
 
 def create_admin_token(username: str) -> str:
+    """
+    Issue a JWT. If JWT_TTL_MIN == 0, no 'exp' claim is added
+    (token never expires).
+    """
     now = datetime.now(timezone.utc)
-    payload = {
+    payload: dict[str, Any] = {
         "sub": username,
         "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(minutes=settings.JWT_TTL_MIN)).timestamp()),
         "role": "admin",
     }
+    if settings.JWT_TTL_MIN > 0:
+        payload["exp"] = int(
+            (now + timedelta(minutes=settings.JWT_TTL_MIN)).timestamp()
+        )
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
 
 
 def decode_admin_token(token: str) -> dict[str, Any] | None:
+    """
+    Decode a JWT. python-jose automatically verifies 'exp' if present.
+    If no 'exp' claim, token is accepted indefinitely.
+    """
     try:
-        return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALG])
+        return jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALG],
+            options={"verify_exp": True},  # ignored if no exp claim
+        )
     except JWTError:
         return None
 
 
 def client_ip(request: Request) -> str:
-    # Render puts the real IP in X-Forwarded-For
     xff = request.headers.get("x-forwarded-for", "")
     if xff:
         return xff.split(",")[0].strip()
@@ -58,10 +69,6 @@ def client_ip(request: Request) -> str:
 
 
 def device_fingerprint(request: Request) -> str:
-    """
-    Stable per-device hash. Changes if UA or Accept-Language changes,
-    which is fine for blocking purposes.
-    """
     parts = [
         client_ip(request),
         request.headers.get("user-agent", ""),
