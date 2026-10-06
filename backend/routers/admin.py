@@ -5,6 +5,7 @@ Tokens are random strings stored in Firebase at:
 
 Rate limiting: 3 failed logins -> device block for 60 min.
 Password: plaintext comparison (env var ADMIN_PASSWORD).
+No JWT. No hashing.
 """
 from __future__ import annotations
 
@@ -29,8 +30,11 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 bearer = HTTPBearer(auto_error=False)
 
 
-# ---------------- helpers ----------------
+# ================================================================
+# Helpers
+# ================================================================
 async def audit(actor: str, action: str, meta: dict | None = None) -> None:
+    """Append-only audit trail of admin writes."""
     await db.push(
         "admin/audit_log",
         {
@@ -42,7 +46,9 @@ async def audit(actor: str, action: str, meta: dict | None = None) -> None:
     )
 
 
-# ---------------- auth dependency ----------------
+# ================================================================
+# Auth dependency — looks up the token in Firebase
+# ================================================================
 async def require_admin(
     creds: HTTPAuthorizationCredentials | None = Depends(bearer),
 ):
@@ -55,7 +61,9 @@ async def require_admin(
     return {"sub": session.get("username", "admin"), "token": token}
 
 
-# ---------------- login ----------------
+# ================================================================
+# Login
+# ================================================================
 @router.post("/login")
 async def login(body: AdminLogin, request: Request):
     fp = device_fingerprint(request)
@@ -124,13 +132,14 @@ async def login(body: AdminLogin, request: Request):
     return {"token": token, "expires_in": 0}  # 0 = never expires
 
 
-# ---------------- whoami ----------------
+# ================================================================
+# Whoami + logout
+# ================================================================
 @router.get("/me")
 async def me(admin=Depends(require_admin)):
     return {"username": admin["sub"]}
 
 
-# ---------------- logout ----------------
 @router.post("/logout")
 async def logout(admin=Depends(require_admin)):
     """Deletes the current session token from Firebase."""
@@ -138,7 +147,9 @@ async def logout(admin=Depends(require_admin)):
     return {"ok": True}
 
 
-# ---------------- dashboard stats ----------------
+# ================================================================
+# Dashboard stats
+# ================================================================
 @router.get("/stats")
 async def stats(admin=Depends(require_admin), days: int = 30):
     today = datetime.now(timezone.utc).date()
@@ -212,7 +223,9 @@ async def stats_range(start: str, end: str, admin=Depends(require_admin)):
     }
 
 
-# ---------------- carousel CRUD ----------------
+# ================================================================
+# Carousel CRUD
+# ================================================================
 @router.get("/carousel")
 async def admin_list_carousel(admin=Depends(require_admin)):
     raw = await db.get("carousel") or {}
@@ -267,7 +280,9 @@ async def admin_delete_carousel(cid: str, admin=Depends(require_admin)):
     return {"ok": True}
 
 
-# ---------------- dialogs CRUD ----------------
+# ================================================================
+# Dialogs CRUD
+# ================================================================
 @router.get("/dialogs")
 async def admin_list_dialogs(admin=Depends(require_admin)):
     raw = await db.get("dialogs") or {}
@@ -329,7 +344,9 @@ async def admin_delete_dialog(did: str, admin=Depends(require_admin)):
     return {"ok": True}
 
 
-# ---------------- pages CRUD ----------------
+# ================================================================
+# Pages CRUD
+# ================================================================
 @router.get("/pages")
 async def admin_list_pages(admin=Depends(require_admin)):
     raw = await db.get("pages") or {}
@@ -353,7 +370,9 @@ async def admin_update_page(
     return {"ok": True}
 
 
-# ---------------- logs ----------------
+# ================================================================
+# Logs
+# ================================================================
 @router.get("/logs/login")
 async def login_logs(admin=Depends(require_admin), limit: int = 200):
     raw = await db.get("admin/login_attempts") or {}
@@ -378,7 +397,9 @@ async def audit_logs(admin=Depends(require_admin), limit: int = 200):
     return {"results": items[:limit]}
 
 
-# ---------------- sessions management ----------------
+# ================================================================
+# Sessions management
+# ================================================================
 @router.get("/sessions")
 async def list_sessions(admin=Depends(require_admin)):
     """List all active admin sessions."""
@@ -404,7 +425,9 @@ async def revoke_all_sessions(admin=Depends(require_admin)):
     return {"ok": True}
 
 
-# ---------------- maintenance ----------------
+# ================================================================
+# Maintenance
+# ================================================================
 @router.post("/trim/visits")
 async def trim_visits(keep_days: int = 7, admin=Depends(require_admin)):
     cutoff = int(time.time()) - keep_days * 86400
@@ -418,9 +441,15 @@ async def trim_visits(keep_days: int = 7, admin=Depends(require_admin)):
     return {"removed": removed}
 
 
-# ---------------- one-time seed ----------------
+# ================================================================
+# One-time seed
+# ================================================================
 @router.post("/seed")
 async def seed_endpoint(request: Request):
+    """
+    One-time seed. Requires ADMIN_USERNAME + ADMIN_PASSWORD in body.
+    Delete or comment out this route after first use.
+    """
     body = await request.json()
     if body.get("username") != settings.ADMIN_USERNAME:
         raise HTTPException(401, "Bad creds")
