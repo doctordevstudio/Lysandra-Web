@@ -21,13 +21,9 @@ class Settings:
         "(KHTML, like Gecko) Chrome/114.0.5735.196 Mobile Safari/537.36",
     )
 
-    # --- Admin auth (plaintext, no hashing) ---
+    # --- Admin auth (plaintext password, random session tokens) ---
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "change-me-in-prod")
-    JWT_ALG: str = "HS256"
-    # Set to 0 for tokens that never expire
-    JWT_TTL_MIN: int = int(os.getenv("JWT_TTL_MIN", "0"))
 
     # --- CORS ---
     ALLOWED_ORIGINS: list[str] = [
