@@ -14,7 +14,6 @@
       if (/^https?:/i.test(url)) box.classList.add("clickable");
       layer().append(back, box);
       requestAnimationFrame(() => { back.classList.add("open"); box.classList.add("open"); });
-      window.API.trackClick("dialog", d.id);
       let closed = false, y0 = null;
       const close = () => {
         if (closed) return; closed = true; seen.add(String(d.id));
@@ -26,7 +25,7 @@
       document.addEventListener("keydown", esc);
       back.addEventListener("click", close);
       box.querySelector(".dlg-x").addEventListener("click", (e) => { e.stopPropagation(); close(); });
-      box.addEventListener("click", (e) => { if (box.classList.contains("clickable") && !e.target.closest("a,.dlg-x")) { window.open(url, "_blank", "noopener"); close(); } });
+      box.addEventListener("click", (e) => { if (box.classList.contains("clickable") && !e.target.closest("a,.dlg-x")) { window.API.trackClick("dialog", d.id); window.open(url, "_blank", "noopener"); close(); } });
       box.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; }, { passive: true });
       box.addEventListener("touchend", (e) => { if (y0 != null && e.changedTouches[0].clientY - y0 > 70) close(); y0 = null; }, { passive: true });
     });
