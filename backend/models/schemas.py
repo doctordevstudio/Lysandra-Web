@@ -75,10 +75,25 @@ class ClickEvent(BaseModel):
 
 
 class WatchEvent(BaseModel):
-    kinopoisk_id: int = Field(ge=0, le=10**12)
+    kinopoisk_id: str = Field(pattern=ID)
     title: str = Field("", max_length=200)
     session_id: str = Field(pattern=SID)
     source: str = Field("", max_length=20)
+
+    @field_validator("kinopoisk_id", mode="before")
+    @classmethod
+    def _id(cls, v):
+        return str(v if v is not None else "0")
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _title(cls, v):
+        return str(v or "")[:200]
+
+    @field_validator("source", mode="before")
+    @classmethod
+    def _source(cls, v):
+        return str(v or "")[:20]
 
 
 class PageviewEvent(BaseModel):
