@@ -5,8 +5,9 @@
   const track = () => document.getElementById("carouselTrack");
 
   function act(item) {
-    window.API.trackClick("carousel", item.id);
     const url = (item.onclick_url || "").trim();
+    if (!url) return; // no link = no redirect = not a click
+    window.API.trackClick("carousel", item.id);
     const m = url.match(/[?&]movie=(\d+)/);
     if (m) return window.Movie.openById(parseInt(m[1], 10));
     if (url.startsWith("#page=")) return window.Pages.open(url.slice(6));
