@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Lysandra · Admin</title>
+  <link rel="icon" href="assets/icon-96.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+<body>
+  <!-- LOGIN -->
+  <section id="login" class="login hidden">
+    <form id="loginForm" class="login-card" autocomplete="on">
+      <img src="assets/icon-96.png" alt="" class="login-logo" />
+      <h1>Lysandra Admin</h1>
+      <p class="muted">Sign in to manage the site</p>
+      <label class="fld"><span>Username</span><input id="lgUser" name="username" autocomplete="username" required /></label>
+      <label class="fld"><span>Password</span><input id="lgPass" name="password" type="password" autocomplete="current-password" required /></label>
+      <div id="lgErr" class="form-err hidden"></div>
+      <button class="btn primary block" id="lgBtn" type="submit">Sign in</button>
+      <p class="tiny muted">Repeated failed attempts block this device.</p>
+    </form>
+  </section>
+
+  <!-- APP -->
+  <div id="app" class="app hidden">
+    <aside id="side" class="side">
+      <div class="side-brand"><img src="assets/icon-96.png" alt="" /><div><b>Lysandra</b><span>Admin panel</span></div></div>
+      <nav id="nav"></nav>
+      <div class="side-foot">
+        <div class="who"><i id="whoDot"></i><span id="who">admin</span></div>
+        <button class="btn ghost block" id="btnLogout">Sign out</button>
+      </div>
+    </aside>
+    <div id="scrim" class="scrim"></div>
+    <main class="main">
+      <header class="top">
+        <button class="icon-btn" id="btnMenu" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <h2 id="pageTitle">Dashboard</h2>
+        <button class="btn ghost sm" id="btnRefresh">Refresh</button>
+      </header>
+      <div id="view" class="view"></div>
+    </main>
+  </div>
+
+  <!-- MODAL -->
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="sheet">
+      <div class="sheet-head"><h3 id="mTitle"></h3><button class="icon-btn" id="mClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <div class="sheet-body" id="mBody"></div>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <script src="config.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
