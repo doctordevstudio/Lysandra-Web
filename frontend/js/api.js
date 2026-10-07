@@ -59,13 +59,14 @@
     trackWatch: (kinopoisk_id, title, source) =>
       req("/api/analytics/watch", {
         method: "POST",
+        keepalive: true,
         body: JSON.stringify({
-          kinopoisk_id,
-          title,
-          source,
+          kinopoisk_id: String(kinopoisk_id ?? "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) || "0",
+          title: String(title || "").slice(0, 200),
+          source: String(source || "").slice(0, 20),
           session_id: window.Session.id(),
         }),
-      }).catch(() => {}),
+      }).catch((e) => console.warn("Watch tracking failed:", e.message)),
 
     trackPageview: (slug) =>
       req(`/api/analytics/pageview/${slug}`, {
