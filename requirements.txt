@@ -5,5 +5,5 @@ httpx
 pydantic
 python-multipart
 python-dotenv
-bleach
+bleach[css]
 cryptography
