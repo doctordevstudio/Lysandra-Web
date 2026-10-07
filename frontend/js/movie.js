@@ -40,7 +40,7 @@
         <div class="card-year">${U.esc(item.year || "")}${item.type ? " · " + U.esc(item.type) : ""}</div>
       </div>
     `;
-    el.addEventListener("click", () => { window.Ads.popunder(); openDetail(item); });
+    el.addEventListener("click", () => { window.Ads.onMovieClick(); openDetail(item); });
     return el;
   }
 
