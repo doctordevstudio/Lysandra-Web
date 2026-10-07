@@ -1,6 +1,13 @@
 /** Backend dialogs: sorted, one at a time, no close button (tap outside / swipe down / Esc). Shown once per page load, so in-app navigation never re-triggers them. */
 (function () {
-  const U = window.U, seen = new Set();
+  const U = window.U, KEY = "lys.dlg", WINDOW_MS = 30 * 60 * 1000;
+  // Dialogs already shown in this tab within 30 min stay hidden after a reload (e.g. returning from an ad).
+  const seen = new Set();
+  try {
+    const st = JSON.parse(sessionStorage.getItem(KEY) || "null");
+    if (st && Date.now() - st.ts < WINDOW_MS) st.ids.forEach((i) => seen.add(String(i)));
+  } catch {}
+  const persist = () => { try { sessionStorage.setItem(KEY, JSON.stringify({ ts: Date.now(), ids: [...seen] })); } catch {} };
   let started = false;
   const layer = () => document.getElementById("dialogLayer");
 
@@ -16,7 +23,7 @@
       requestAnimationFrame(() => { back.classList.add("open"); box.classList.add("open"); });
       let closed = false, y0 = null;
       const close = () => {
-        if (closed) return; closed = true; seen.add(String(d.id));
+        if (closed) return; closed = true; seen.add(String(d.id)); persist();
         document.removeEventListener("keydown", esc);
         back.classList.remove("open"); box.classList.remove("open");
         setTimeout(() => { back.remove(); box.remove(); res(); }, 260);
