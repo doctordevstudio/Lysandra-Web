@@ -112,7 +112,11 @@ class FirebaseRTDB:
 
     async def incr(self, path: str, n: int = 1) -> None:
         """Atomic server-side increment (no read-modify-write race)."""
-        await self._do("PUT", path, json={".sv": {"increment": int(n)}})
+        try:
+            await self._do("PUT", path, json={".sv": {"increment": int(n)}})
+        except DBError:  # fallback if server-side increment is rejected
+            cur = await self._do("GET", path)
+            await self._do("PUT", path, json=(cur if isinstance(cur, (int, float)) else 0) + int(n))
 
     async def close(self) -> None:
         if self._client and not self._client.is_closed:
