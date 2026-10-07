@@ -89,7 +89,7 @@
       <div class="sec">New users</div><div class="stats">${statBox("Today", u.today)}${statBox("Yesterday", u.yesterday)}${statBox("All time", u.all_time, "since tracking began", "b")}</div>
       <div class="sec">Activity</div><div class="stats">${statBox("Active today", u.active_today, "", "g")}${statBox("Active yesterday", u.active_yesterday, "", "g")}${statBox("Old users active yesterday", u.old_active_yesterday, "returning, not new", "r")}</div>
       <div class="sec">Movie watches</div><div class="stats">${statBox("Today", w.today)}${statBox("Yesterday", w.yesterday)}${statBox("All time", w.all_time, "", "b")}</div>
-      <div class="sec">Engagement</div><div class="stats">${statBox("Carousel clicks", st.clicks.carousel_total, "unique users", "r")}${statBox("Dialog views", st.clicks.dialog_total, "unique users", "r")}</div>
+      <div class="sec">Engagement</div><div class="stats">${statBox("Carousel clicks", st.clicks.carousel_total, "unique users", "r")}${statBox("Dialog clicks", st.clicks.dialog_total, "unique users", "r")}</div>
       <div class="sec">Date range</div>
       <div class="card"><div class="tabs" id="rt">${[["today", "Today"], ["yesterday", "Yesterday"], ["7", "7 days"], ["30", "30 days"], ["all", "All time"], ["custom", "Custom"]].map(([k, l]) => `<button data-k="${k}">${l}</button>`).join("")}</div><div id="rbox"></div></div>
       <div class="card"><h3>Last 14 days <small id="cm"></small></h3><div class="tabs" id="ct"><button data-m="new_users" class="on">New users</button><button data-m="active">Active</button><button data-m="watch">Watches</button></div><div id="chart"></div></div>`;
@@ -114,7 +114,7 @@
   async function vCarousel(host) {
     host.innerHTML = skeleton(3);
     const items = (await api("/carousel")).results;
-    host.innerHTML = `<div class="head"><p>Home-screen slides. Lower sort number shows first. Clicks count one per user.</p><button class="btn primary" data-act="new">+ Add slide</button></div>` +
+    host.innerHTML = `<div class="head"><p>Home-screen slides. Lower sort number shows first. Clicks count once per user, only when the slide has a link and is tapped.</p><button class="btn primary" data-act="new">+ Add slide</button></div>` +
       (items.length ? `<div class="cards">${items.map((c) => `<div class="item"><img class="th" src="${esc(c.image_url)}" alt=""><div class="bd">
         <div style="display:flex;gap:8px;align-items:center">${onoff(c.enabled)}${badge("Sort " + (c.sort ?? 0), "info")}</div>
         <div class="url">${esc(c.onclick_url || "No click action")}</div>${sumSt(c.stats)}
@@ -147,8 +147,8 @@
   async function vDialogs(host) {
     host.innerHTML = skeleton(3);
     const items = (await api("/dialogs")).results;
-    host.innerHTML = `<div class="head"><p>Pop-ups shown on site open, one at a time in sort order. Views count one per user.</p><button class="btn primary" data-act="new">+ New dialog</button></div>` +
-      (items.length ? `<div class="card"><div class="wrap"><table class="tbl"><thead><tr><th>Sort</th><th>Type</th><th>Content</th><th>Unique views</th><th>Status</th><th></th></tr></thead><tbody>${items.map((d) => `<tr>
+    host.innerHTML = `<div class="head"><p>Pop-ups shown on site open, one at a time in sort order. A click is counted once per user, only when they tap a dialog that has a link.</p><button class="btn primary" data-act="new">+ New dialog</button></div>` +
+      (items.length ? `<div class="card"><div class="wrap"><table class="tbl"><thead><tr><th>Sort</th><th>Type</th><th>Content</th><th>Unique clicks</th><th>Status</th><th></th></tr></thead><tbody>${items.map((d) => `<tr>
         <td>${d.sort ?? 0}</td><td>${badge(d.type, "info")}</td><td>${snippet(d)}</td><td>${sumSt(d.stats)}</td><td>${onoff(d.enabled)}</td>
         <td style="white-space:nowrap"><button class="btn ghost sm" data-act="edit" data-id="${esc(d.id)}">Edit</button> <button class="btn ghost sm" data-act="range" data-id="${esc(d.id)}">Range</button> <button class="btn danger sm" data-act="del" data-id="${esc(d.id)}">Delete</button></td></tr>`).join("")}</tbody></table></div></div>` : `<div class="card empty">No dialogs yet.</div>`);
     const form = (d = {}) => {
@@ -174,7 +174,7 @@
     host.onclick = async (e) => {
       const b = e.target.closest("[data-act]"); if (!b) return; const d = items.find((x) => x.id === b.dataset.id);
       if (b.dataset.act === "new") form(); else if (b.dataset.act === "edit") form(d);
-      else if (b.dataset.act === "range") rangeModal("dialog", d.id, "dialog views");
+      else if (b.dataset.act === "range") rangeModal("dialog", d.id, "dialog clicks");
       else if (b.dataset.act === "del" && confirm("Delete this dialog?")) { try { await api("/dialogs/" + d.id, { method: "DELETE" }); toast("Deleted", "ok"); render(); } catch (x) { toast(x.message, "err"); } }
     };
   }
