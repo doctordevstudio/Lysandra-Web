@@ -1,6 +1,8 @@
 """Public settings / ads / encryption key."""
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Request
 
 from config import settings
@@ -12,7 +14,7 @@ router = APIRouter(prefix="/api", tags=["public"])
 
 @router.get("/secure/key")
 async def secure_key():
-    return {"pub": SERVER_PUB, "enabled": settings.ENCRYPT_API}
+    return {"pub": SERVER_PUB, "enabled": settings.ENCRYPT_API, "now": int(time.time() * 1000)}
 
 
 @router.get("/settings")
