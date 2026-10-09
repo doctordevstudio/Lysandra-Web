@@ -1,28 +1,42 @@
 """
 Public analytics (all unique-per-session, written in the background so requests return instantly).
+Request bodies are encrypted by the browser and decrypted here (services/secure.py).
 
-  users/{sid}                          first_seen / first_day
-  analytics/active/{day}/{sid}         marker: user active that day
-  analytics/watch/{day}/{sid}/{id}     marker + title/source
-  analytics/clicks/{kind}/{ref}/{sid}  marker: first click ever from that user
-  analytics/views/{slug}/{day}/{sid}   marker: unique page view per day
-  admin/visits                         "user website" log (one row per user per day)
+  users/{sid}                              first_seen / first_day
+  analytics/active/{day}/{sid}             marker: user active that day
+  analytics/watch/{day}/{sid}/{kind_id}    marker + title/source/kind
+  analytics/clicks/{kind}/{ref}/{sid}      marker: first click ever from that user
+  analytics/views/{slug}/{day}/{sid}       marker: unique page view per day
+  counters/watch_kind/{kind}/{day}         plays per category (bollywood / hollywood / serials / livetv)
+  admin/visits                             "user website" log (one row per user per day)
 """
 from __future__ import annotations
 
 import logging
 import time
+from typing import Type, TypeVar
 
-from fastapi import APIRouter, BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from pydantic import BaseModel, ValidationError
 
 from models.schemas import ClickEvent, PageviewEvent, VisitEvent, WatchEvent
 from services import counters
 from services.defaults import PAGE_SLUGS
 from services.firebase import db
+from services.secure import open_body
 from services.security import client_ip, hash_key
 
 log = logging.getLogger("lysandra.analytics")
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
+M = TypeVar("M", bound=BaseModel)
+
+
+async def parse(request: Request, model: Type[M]) -> M:
+    data = await open_body(request)
+    try:
+        return model.model_validate(data)
+    except ValidationError:
+        raise HTTPException(422, "Invalid payload")
 
 
 async def _safe(coro) -> None:
@@ -73,11 +87,12 @@ async def _record_click(ev: ClickEvent) -> None:
 
 
 async def _record_watch(ev: WatchEvent) -> None:
-    path = f"analytics/watch/{counters.today()}/{ev.session_id}/{ev.kinopoisk_id}"
+    path = f"analytics/watch/{counters.today()}/{ev.session_id}/{ev.kind}_{ev.kinopoisk_id}"
     if await db.get(path):
         return
-    await db.set(path, {"t": int(time.time()), "title": ev.title, "source": ev.source})
+    await db.set(path, {"t": int(time.time()), "title": ev.title, "source": ev.source, "kind": ev.kind})
     await counters.bump("watch")
+    await counters.bump("watch_kind", ev.kind)
 
 
 async def _record_pageview(slug: str, sid: str) -> None:
@@ -89,20 +104,21 @@ async def _record_pageview(slug: str, sid: str) -> None:
 
 
 @router.post("/visit")
-async def visit(ev: VisitEvent, request: Request, bg: BackgroundTasks):
+async def visit(request: Request, bg: BackgroundTasks):
+    ev = await parse(request, VisitEvent)
     bg.add_task(_safe, _record_visit(ev.session_id, client_ip(request), request.headers.get("user-agent", "")))
     return {"ok": True}
 
 
 @router.post("/click")
-async def track_click(ev: ClickEvent, bg: BackgroundTasks):
-    bg.add_task(_safe, _record_click(ev))
+async def track_click(request: Request, bg: BackgroundTasks):
+    bg.add_task(_safe, _record_click(await parse(request, ClickEvent)))
     return {"ok": True}
 
 
 @router.post("/watch")
-async def track_watch(ev: WatchEvent, bg: BackgroundTasks):
-    bg.add_task(_safe, _record_watch(ev))
+async def track_watch(request: Request, bg: BackgroundTasks):
+    bg.add_task(_safe, _record_watch(await parse(request, WatchEvent)))
     return {"ok": True}
 
 
@@ -111,9 +127,8 @@ async def track_pageview(slug: str, request: Request, bg: BackgroundTasks):
     if slug not in PAGE_SLUGS:
         return {"ok": False}
     try:
-        body = PageviewEvent.model_validate(await request.json())
-        sid = body.session_id
-    except Exception:
+        sid = (await parse(request, PageviewEvent)).session_id
+    except HTTPException:
         sid = "anon_" + hash_key(client_ip(request))
     bg.add_task(_safe, _record_pageview(slug, sid))
     return {"ok": True}
