@@ -26,6 +26,9 @@ class Settings:
     UPSTREAM_FALLBACK: str = os.getenv(
         "UPSTREAM_FALLBACK", "https://mapi.elochkaigolochla.com/api/v1/catalog"
     ).rstrip("/")
+    # Live TV ("new-broadcasts") upstream: primary, then fallback. Never sent to the browser.
+    LIVETV_URL: str = os.getenv("LIVETV_URL", "https://mapi.elochkaigolochla.com/api/v1/new-broadcasts")
+    LIVETV_FALLBACK: str = os.getenv("LIVETV_FALLBACK", "https://img.elochkaigolochla.com/api/v1/new-broadcasts")
     UPSTREAM_UA: str = os.getenv(
         "UPSTREAM_UA",
         "Mozilla/5.0 (Linux; Android 16; Xiaomi 25040RP0AI) AppleWebKit/537.36 "
