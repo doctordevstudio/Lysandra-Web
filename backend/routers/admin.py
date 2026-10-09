@@ -30,6 +30,7 @@ from services.security import (
 )
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+PLAY_KINDS = ("bollywood", "hollywood", "serials", "livetv", "unknown")
 bearer = HTTPBearer(auto_error=False)
 _ID = re.compile(r"^[A-Za-z0-9_\-]{1,64}$")
 _DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -144,6 +145,7 @@ async def logout(admin=Depends(require_admin)):
 async def stats(admin=Depends(require_admin)):
     nu, act, old, watch = await asyncio.gather(*(counters.series(m) for m in ("new_users", "active", "old_active", "watch")))
     car, dia = await counters.all_series("click_carousel"), await counters.all_series("view_dialog")
+    wk = await counters.all_series("watch_kind")
     t, y = counters.today(), counters.yesterday()
     return {
         "users": {"today": nu.get(t, 0), "yesterday": nu.get(y, 0), "all_time": sum(nu.values()),
@@ -152,6 +154,7 @@ async def stats(admin=Depends(require_admin)):
         "watch": {"today": watch.get(t, 0), "yesterday": watch.get(y, 0), "all_time": sum(watch.values())},
         "clicks": {"carousel_total": sum(sum(s.values()) for s in car.values()),
                    "dialog_total": sum(sum(s.values()) for s in dia.values())},
+        "plays": {k: counters.summary(wk.get(k, {})) for k in PLAY_KINDS},
         "today": t,
     }
 
@@ -161,8 +164,10 @@ async def stats_range(start: str, end: str, admin=Depends(require_admin)):
     start, end = _day(start), _day(end)
     try:
         nu, act, watch = await asyncio.gather(*(counters.series(m) for m in ("new_users", "active", "watch")))
+        wk = await counters.all_series("watch_kind")
         return {"range": {"start": start, "end": end}, "new_users": counters.in_range(nu, start, end),
-                "active_users": counters.in_range(act, start, end), "watch_count": counters.in_range(watch, start, end)}
+                "active_users": counters.in_range(act, start, end), "watch_count": counters.in_range(watch, start, end),
+                "by_kind": {k: counters.in_range(wk.get(k, {}), start, end) for k in PLAY_KINDS}}
     except ValueError as e:
         raise HTTPException(400, str(e))
 
