@@ -84,11 +84,15 @@
   async function vDashboard(host) {
     host.innerHTML = skeleton(8);
     const [st, se] = await Promise.all([api("/stats"), api("/stats/series?days=14")]);
-    const u = st.users, w = st.watch, T = st.today;
+    const u = st.users, w = st.watch, T = st.today, pl = st.plays || {};
+    const PK = [["bollywood", "Bollywood", "g"], ["hollywood", "Hollywood", "b"], ["serials", "Series", "r"], ["livetv", "Live TV", ""]];
+    const z = { today: 0, yesterday: 0, all: 0 };
+    const kindBoxes = (r, note) => PK.map(([k, l, c]) => statBox(l, (r.by_kind || {})[k] || 0, note, c)).join("");
     host.innerHTML = `
       <div class="sec">New users</div><div class="stats">${statBox("Today", u.today)}${statBox("Yesterday", u.yesterday)}${statBox("All time", u.all_time, "since tracking began", "b")}</div>
       <div class="sec">Activity</div><div class="stats">${statBox("Active today", u.active_today, "", "g")}${statBox("Active yesterday", u.active_yesterday, "", "g")}${statBox("Old users active yesterday", u.old_active_yesterday, "returning, not new", "r")}</div>
       <div class="sec">Movie watches</div><div class="stats">${statBox("Today", w.today)}${statBox("Yesterday", w.yesterday)}${statBox("All time", w.all_time, "", "b")}</div>
+      <div class="sec">Plays by category</div><div class="stats">${PK.map(([k, l, c]) => { const x = pl[k] || z; return statBox(l, x.all, `Today ${nf(x.today)} · Yesterday ${nf(x.yesterday)}`, c); }).join("")}${(pl.unknown || z).all ? statBox("Other", pl.unknown.all, `Today ${nf(pl.unknown.today)}`) : ""}</div>
       <div class="sec">Engagement</div><div class="stats">${statBox("Carousel clicks", st.clicks.carousel_total, "unique users", "r")}${statBox("Dialog clicks", st.clicks.dialog_total, "unique users", "r")}</div>
       <div class="sec">Date range</div>
       <div class="card"><div class="tabs" id="rt">${[["today", "Today"], ["yesterday", "Yesterday"], ["7", "7 days"], ["30", "30 days"], ["all", "All time"], ["custom", "Custom"]].map(([k, l]) => `<button data-k="${k}">${l}</button>`).join("")}</div><div id="rbox"></div></div>
@@ -96,7 +100,7 @@
     const draw = (m) => { $("#chart").innerHTML = bars(se.results, m); };
     draw("new_users");
     $("#ct").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; $$("#ct button").forEach((x) => x.classList.toggle("on", x === b)); draw(b.dataset.m); };
-    const show = (r, note) => ($("#rbox").innerHTML = `<div class="stats">${statBox("New users", r.new_users, note)}${statBox("Active users", r.active_users, note, "g")}${statBox("Movie watches", r.watch_count, note, "b")}</div>`);
+    const show = (r, note) => ($("#rbox").innerHTML = `<div class="stats">${statBox("New users", r.new_users, note)}${statBox("Active users", r.active_users, note, "g")}${statBox("Movie watches", r.watch_count, note, "b")}</div><div class="sec" style="margin:16px 0 10px">Plays by category</div><div class="stats">${kindBoxes(r, note)}</div>`);
     const run = async (a, b, note) => { try { show(await api(`/stats/range?start=${a}&end=${b}`), note); } catch (e) { toast(e.message, "err"); } };
     $("#rt").onclick = (e) => {
       const b = e.target.closest("button"); if (!b) return; $$("#rt button").forEach((x) => x.classList.toggle("on", x === b));
@@ -105,7 +109,7 @@
       else if (k === "7") run(addDays(T, -6), T, "Last 7 days"); else if (k === "30") run(addDays(T, -29), T, "Last 30 days");
       else if (k === "all") run("2020-01-01", T, "All time");
       else { $("#rbox").innerHTML = `<div class="row"><label class="fld"><span>From</span><input type="date" id="cA" value="${addDays(T, -6)}"></label><label class="fld"><span>To</span><input type="date" id="cB" value="${T}"></label><button class="btn primary" id="cGo">Apply</button></div><div id="cOut" style="margin-top:14px"></div>`;
-        $("#cGo").onclick = async () => { try { const r = await api(`/stats/range?start=${$("#cA").value}&end=${$("#cB").value}`); $("#cOut").innerHTML = `<div class="stats">${statBox("New users", r.new_users)}${statBox("Active users", r.active_users, "", "g")}${statBox("Movie watches", r.watch_count, "", "b")}</div>`; } catch (x) { toast(x.message, "err"); } }; }
+        $("#cGo").onclick = async () => { try { const r = await api(`/stats/range?start=${$("#cA").value}&end=${$("#cB").value}`); $("#cOut").innerHTML = `<div class="stats">${statBox("New users", r.new_users)}${statBox("Active users", r.active_users, "", "g")}${statBox("Movie watches", r.watch_count, "", "b")}</div><div class="sec" style="margin:16px 0 10px">Plays by category</div><div class="stats">${kindBoxes(r, "")}</div>`; } catch (x) { toast(x.message, "err"); } }; }
     };
     $('#rt [data-k="today"]').click();
   }
