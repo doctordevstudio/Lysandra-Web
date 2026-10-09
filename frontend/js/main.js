@@ -15,7 +15,7 @@
   /** Branding + links are editable from the admin panel (Settings). */
   async function loadSettings() {
     try {
-      const s = await Promise.race([window.API.settings(), new Promise((_, rej) => setTimeout(rej, 3000))]);
+      const s = await Promise.race([window.API.settings(), new Promise((_, rej) => setTimeout(rej, 2500))]);
       const C = window.LYSANDRA_CONFIG;
       if (s.brand_name) C.BRAND_NAME = s.brand_name;
       if (s.builder) C.BUILDER = s.builder;
@@ -23,7 +23,7 @@
       if (s.telegram_join) C.TELEGRAM_JOIN = s.telegram_join;
       if (s.telegram_hire) C.TELEGRAM_HIRE = s.telegram_hire;
       document.title = C.BRAND_NAME;
-      document.querySelectorAll(".brand,.ft-name,.splash-name").forEach((e) => { if (e.children.length === 0) e.textContent = C.BRAND_NAME; });
+      document.querySelectorAll(".brand span,.ft-name,.splash-name").forEach((e) => { if (e.children.length === 0) e.textContent = C.BRAND_NAME; });
       document.querySelectorAll(".ft-credit").forEach((e) => (e.textContent = C.BUILDER));
     } catch {}
   }
@@ -45,9 +45,10 @@
     window.Ads.init();
 
     // Load remote bits in parallel
-    await Promise.allSettled([
-      window.Carousel.load(),
-      window.Tabs.init(),   // Tabs.init triggers first grid load
+    window.Tabs.init();                       // starts the first grid load
+    await Promise.race([                      // never keep the splash waiting on a slow carousel
+      window.Carousel.load().catch(() => {}),
+      new Promise((r) => setTimeout(r, 2500)),
     ]);
 
     // Hide splash after assets + min delay
