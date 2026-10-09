@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from config import settings
-from routers import admin, analytics, carousel, catalog, dialogs, pages, public
+from routers import admin, analytics, carousel, catalog, dialogs, livetv, pages, public
 from services import settings_store
 from services.firebase import BadKey, DBError, db
 from services.headers import SecurityHeadersMiddleware
@@ -89,7 +89,7 @@ async def health():
     return {"status": "ok", "service": "lysandra"}
 
 
-for r in (public.router, catalog.router, carousel.router, dialogs.router, pages.router, analytics.router, admin.router):
+for r in (public.router, catalog.router, livetv.router, carousel.router, dialogs.router, pages.router, analytics.router, admin.router):
     app.include_router(r)
 
 
