@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#060913" />
-  <meta name="description" content="Lysandra — Stream movies and series in HD." />
+  <meta name="theme-color" content="#03123a" />
+  <meta name="description" content="Lysandra — Stream Bollywood, Hollywood, series and live TV in HD." />
   <title>Lysandra</title>
   <link rel="icon" href="assets/icon-96.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/main.css" />
-  <link rel="stylesheet" href="css/v2.css" />
+  <link rel="stylesheet" href="css/app.css" />
 </head>
 <body>
 
@@ -28,7 +27,7 @@
     <button class="icon-btn" id="btnMenu" aria-label="Menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
     </button>
-    <div class="brand">LYSANDRA</div>
+    <div class="brand"><img src="assets/icon-96.png" alt="" width="30" height="30" style="border-radius:8px" /><span>LYSANDRA</span></div>
     <div class="spacer"></div>
     <div id="searchWrap">
       <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -63,8 +62,9 @@
         <button class="tab active" data-kind="bollywood">Bollywood</button>
         <button class="tab" data-kind="hollywood">Hollywood</button>
         <button class="tab" data-kind="serials">Series</button>
+        <button class="tab" data-kind="livetv"><i class="live-dot"></i>Live TV</button>
       </div>
-      <div class="section-title" id="sectionTitle">Bollywood</div>
+      <div class="section-head"><h2 class="section-title" id="sectionTitle">Bollywood</h2><span class="section-sub" id="sectionSub"></span></div>
       <div class="grid" id="grid"></div>
       <div class="loader hidden" id="loader"></div>
       <div id="sentinel" style="height:1px;"></div>
@@ -102,12 +102,12 @@
     <div class="detail-grid">
       <div class="detail-poster"><img id="dmPoster" alt="" /></div>
       <div class="detail-body">
-        <div class="detail-title" id="dmTitle"></div>
+        <div class="detail-title"><span id="dmTitle"></span><span class="live-pill hidden" id="dmLive"><i></i>LIVE</span></div>
         <div class="detail-meta" id="dmMeta"></div>
         <div class="detail-desc" id="dmDesc"></div>
         <button class="play-btn" id="dmPlay">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          Play Now
+          <span id="dmPlayText">Play Now</span>
         </button>
         <div class="ad-slot"></div>
       </div>
@@ -116,7 +116,7 @@
 
   <div id="formatDialog" role="dialog" aria-modal="true">
     <div class="dialog-head">
-      <div class="title">Select Player</div>
+      <div class="title" id="fmTitle">Select Player</div>
       <button class="icon-btn" id="fmClose" aria-label="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
@@ -129,6 +129,7 @@
     <button class="player-close" id="pmClose" aria-label="Close">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
     </button>
+    <button class="player-ext hidden" id="pmExt">Open in new tab ↗</button>
     <div id="pmHost" style="width:100%;height:100%;"></div>
   </div>
 
@@ -153,6 +154,7 @@
   <script src="js/carousel.js"></script>
   <script src="js/tabs.js"></script>
   <script src="js/movie.js"></script>
+  <script src="js/livetv.js"></script>
   <script src="js/player.js"></script>
   <script src="js/search.js"></script>
   <script src="js/pages.js"></script>
