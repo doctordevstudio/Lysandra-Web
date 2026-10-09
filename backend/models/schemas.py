@@ -79,6 +79,13 @@ class WatchEvent(BaseModel):
     title: str = Field("", max_length=200)
     session_id: str = Field(pattern=SID)
     source: str = Field("", max_length=20)
+    kind: str = "unknown"
+
+    @field_validator("kind", mode="before")
+    @classmethod
+    def _kind(cls, v):
+        v = str(v or "unknown")
+        return v if v in ("bollywood", "hollywood", "serials", "livetv") else "unknown"
 
     @field_validator("kinopoisk_id", mode="before")
     @classmethod
